@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChatNova — AIChatbot</title>
+<meta name="description" content="ChatNova: a private Groq-powered AI chatbot. Your key stays on your server; chats stay in your browser." />
+<link rel="stylesheet" href="/static/styles.css" />
+<link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="sidebar" id="sidebar" aria-label="Conversations">
+    <div class="side-head">
+      <div class="logo"><span class="logo-mark" aria-hidden="true">✦</span><span class="logo-text">ChatNova</span></div>
+      <button class="icon-btn" id="close-side" type="button" aria-label="Close sidebar">✕</button>
+    </div>
+    <button class="newchat" id="new-chat" type="button">＋ New chat</button>
+    <div class="conv-tools">
+      <button class="tool-btn" id="export-md" type="button" title="Export current chat as Markdown">⤓ MD</button>
+      <button class="tool-btn" id="export-json" type="button" title="Export current chat as JSON">⤓ JSON</button>
+      <button class="tool-btn" id="import-chat" type="button" title="Import a chat file">⤒ Import</button>
+    </div>
+    <input type="file" id="import-file" accept=".json,.md,application/json" hidden />
+    <nav class="conv-list" id="conv-list" aria-label="Conversation history"></nav>
+    <div class="side-foot">
+      <button class="tool-btn wide" id="open-settings" type="button">⚙ Settings</button>
+      <button class="tool-btn wide" id="theme-toggle" type="button" aria-label="Toggle dark/light theme">🌙 Theme</button>
+      <p class="privacy-note">Chats are stored only in this browser. Your API key lives on your server, never here.</p>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="open-side" type="button" aria-label="Open sidebar">☰</button>
+      <div class="top-title">
+        <span class="conv-title" id="conv-title">New conversation</span>
+        <span class="model-badge" id="model-badge">…</span>
+      </div>
+      <div class="top-actions">
+        <span class="status-pill" id="status-pill">CHECKING…</span>
+        <button class="icon-btn" id="copy-conv" type="button" title="Copy full conversation" aria-label="Copy full conversation">⧉</button>
+        <button class="icon-btn" id="clear-conv" type="button" title="Clear this conversation" aria-label="Clear this conversation">🗑</button>
+        <button class="icon-btn only-mobile" id="open-settings-m" type="button" aria-label="Open settings">⚙</button>
+      </div>
+    </header>
+
+    <div class="setup-banner" id="setup-banner" hidden>
+      <div>
+        <strong>Setup needed.</strong>
+        <span id="setup-text">Add your Groq API key to start chatting.</span>
+      </div>
+      <button class="btn btn-small" id="setup-help" type="button">How?</button>
+    </div>
+
+    <main class="chat" id="chat" aria-live="polite">
+      <section class="welcome" id="welcome">
+        <div class="welcome-mark" aria-hidden="true">✦</div>
+        <h1>What can I help with?</h1>
+        <p class="welcome-sub">Powered by Groq · replies stream in live · history stays in your browser</p>
+        <div class="prompts" id="prompts">
+          <button type="button" class="prompt">Explain recursion with a simple code example</button>
+          <button type="button" class="prompt">Write a 7-day study plan for physics</button>
+          <button type="button" class="prompt">Draft a polite leave email to my teacher</button>
+          <button type="button" class="prompt">Give me 5 beginner-friendly Python project ideas</button>
+          <button type="button" class="prompt">Explain black holes like I'm 12</button>
+          <button type="button" class="prompt">Review this code: def add(a,b): return a+b</button>
+        </div>
+      </section>
+      <div class="messages" id="messages"></div>
+    </main>
+
+    <footer class="composer-wrap">
+      <div class="composer" id="composer">
+        <textarea id="input" rows="1" maxlength="6000" placeholder="Message ChatNova… (Enter to send, Shift+Enter for new line)" aria-label="Message ChatNova"></textarea>
+        <button class="send-btn" id="send-btn" type="button" aria-label="Send message">➤</button>
+      </div>
+      <div class="composer-meta">
+        <span id="char-count">0 / 6000</span>
+        <span class="hint">Enter ↵ send · Shift+Enter ↵ new line</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="modal-backdrop" id="settings-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-head">
+      <h3 id="settings-title">⚙ Settings</h3>
+      <button class="icon-btn" id="close-settings" type="button" aria-label="Close settings">✕</button>
+    </div>
+    <p class="modal-desc">The Groq key is configured on the server (<code>.env</code> file) — it is never stored in this browser.</p>
+
+    <label class="field-label" for="model-select">MODEL</label>
+    <select id="model-select" class="field"></select>
+
+    <label class="field-label" for="temp-range">CREATIVITY (TEMPERATURE): <span id="temp-val">0.7</span></label>
+    <input id="temp-range" type="range" min="0" max="1.5" step="0.1" value="0.7" class="field" />
+
+    <label class="field-label" for="maxtok-range">MAX REPLY LENGTH: <span id="maxtok-val">1024</span> tokens</label>
+    <input id="maxtok-range" type="range" min="64" max="2048" step="64" value="1024" class="field" />
+
+    <label class="field-label" for="system-input">CUSTOM INSTRUCTIONS (OPTIONAL)</label>
+    <textarea id="system-input" rows="3" maxlength="1000" class="field" placeholder="e.g. Always answer in simple English with examples."></textarea>
+
+    <div class="modal-btns">
+      <button id="save-settings" class="btn btn-fire" type="button">SAVE</button>
+      <button id="reset-settings" class="btn btn-ghost" type="button">RESET</button>
+    </div>
+    <p class="status-line" id="settings-status">Status: checking…</p>
+
+    <details class="help">
+      <summary>Get a Groq API key (free)</summary>
+      <ol>
+        <li>Open <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> and sign up.</li>
+        <li>Create an API key (starts with <code>gsk_</code>) and copy it.</li>
+        <li>In the project folder: copy <code>.env.example</code> to <code>.env</code>, paste the key as <code>GROQ_API_KEY=…</code>.</li>
+        <li>Restart the app (<code>python app.py</code>). The banner above disappears when the key loads.</li>
+      </ol>
+    </details>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
+
+<script src="/static/chatlib.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
